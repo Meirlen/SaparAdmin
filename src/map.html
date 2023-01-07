@@ -1,0 +1,289 @@
+<!--https://www.youtube.com/watch?v=NyjMmNCtKf4-->
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Realtime location tracker</title>
+
+    <!-- leaflet css  -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        #map {
+            width: 100%;
+            height: 100vh;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="map"></div>
+</body>
+</html>
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC"
+      crossorigin="anonymous">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.1/jquery.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jQuery-slimScroll/1.3.8/jquery.slimscroll.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.js"></script>
+
+
+<!-- leaflet js  -->
+<script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+
+
+<script>
+
+
+    var userLat = 49.866690304824054
+    var userLng =  73.18854500268499
+
+
+    
+
+    // Map initialization 
+    var map = L.map('map').setView([userLat, userLng], 16);
+
+    //osm layer
+    var osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    });
+    osm.addTo(map);
+
+   setInterval(() => {
+
+      getDriverLocations()
+    //   getRoute2Points()
+
+
+
+   }, 50000);
+
+    var markerDriver, circle,markerUser;
+
+
+    var markers_driver = [];
+
+    
+    function addMarkers(points){
+
+        for (let i = 0; i < markers_driver.length; i++) {
+            map.removeLayer(markers_driver[i])
+
+        }
+
+     
+
+        var greenIcon = new L.Icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+
+
+
+
+
+
+        for (let i = 0; i < points.length; i++) {
+            // latlngs.push([coordinates[i].latitude, coordinates[i].longitude])
+
+            var titleIcon = new L.DivIcon({
+            className: 'my-div-icon',
+            html: '<img class="my-div-image"   width="33" height="50"src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png"/>'+
+                '<span class="my-div-span">'+points[i]["phone"]+'</span>'
+            })
+
+
+            m = L.marker([points[i]["lat"], points[i]["lng"]],{icon: titleIcon }).addTo(map);
+            console.log("add marker" + points[i]["lat"]);
+            markers_driver.push(m);
+            // addMarkers(data)
+
+         }
+
+         
+        // var featureGroup = L.featureGroup([markers_driver]).addTo(map)
+
+        // map.fitBounds(featureGroup.getBounds())
+
+     
+    }
+
+    function addMarkers2(lat,long){
+     
+
+        if(markerDriver) {
+            map.removeLayer(markerDriver)
+
+        }
+        if(markerUser) {
+            map.removeLayer(markerUser)
+
+        }
+        if(circle) {
+            map.removeLayer(circle)
+        }
+
+        var greenIcon = new L.Icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+
+        markerDriver = L.marker([lat, long],{icon: greenIcon})
+        markerUser = L.marker([userLat,userLng])
+
+
+        // var featureGroup = L.featureGroup([markerDriver,markerUser]).addTo(map)
+
+        // map.fitBounds(featureGroup.getBounds())
+
+        console.log("Your coordinate is: Lat: "+ lat +" Long: "+ long)
+    }
+
+    let currentRequest = null;
+
+    var polylines = [];
+
+    function showRoute(encoded){
+
+        polylines.forEach(function (item) {
+            map.removeLayer(item)
+        });
+        var coordinates = decode(encoded)
+        var polylinePoints = coordinates
+
+        var latlngs = []
+
+        for (let i = 0; i < coordinates.length; i++) {
+            latlngs.push([coordinates[i].latitude, coordinates[i].longitude])
+
+        }
+        console.log(latlngs)
+        var polyline = L.polyline(latlngs, {color: 'red'}).addTo(map);
+        polylines.push(polyline);
+
+    }
+
+    // Get driver current locations by api
+    
+    function getDriverLocations(){
+
+
+        var json = {
+                "order_id": 10,
+                }
+        currentRequest = $.ajax({
+                url: "http://165.22.13.172:8000/mobile/driver/order/coordinates",
+                type: "get",
+                dataType: 'json',
+                async: true,
+                processData: false,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Cache-Control': 'no-cache'
+                },
+                beforeSend: function () {
+                    if (currentRequest != null) {
+                            currentRequest.abort();
+                    }
+                }
+                })
+                .done(function (data) {
+                    // data = JSON.parse(data);
+                    console.log(data)
+                    addMarkers(data)
+
+           
+                    // var lat  = data['lat']
+                    // var lng  = data['lng']
+
+                    // addMarkers(lat,lng)
+                    // getRoute2Points(lat,lng)
+            
+                });
+
+    }
+
+
+
+
+    function getRoute2Points(driverLat,driverLng){
+        var json = {
+                "order_id": 6,
+                }
+        currentRequest = $.ajax({
+                url: "http://router.project-osrm.org/route/v1/driving/"+userLng+","+userLat+";"+driverLng+","+driverLat+"?alternatives=true&geometries=polyline",
+                beforeSend: function () {
+                    if (currentRequest != null) {
+                            currentRequest.abort();
+                    }
+                }
+                })
+                .done(function (data) {
+                    // data = JSON.parse(data);
+                    var encodedRoute = data['routes'][0]['geometry']
+                    showRoute(encodedRoute)
+                    console.log(encodedRoute)
+                });
+
+        }
+    function decode(encoded){
+
+            // array that holds the points
+
+            var points=[ ]
+            var index = 0, len = encoded.length;
+            var lat = 0, lng = 0;
+            while (index < len) {
+               var b, shift = 0, result = 0;
+               do {
+
+            b = encoded.charAt(index++).charCodeAt(0) - 63;//finds ascii                                                                                    //and substract it by 63
+                     result |= (b & 0x1f) << shift;
+                     shift += 5;
+                     } while (b >= 0x20);
+
+
+               var dlat = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
+               lat += dlat;
+            shift = 0;
+            result = 0;
+            do {
+               b = encoded.charAt(index++).charCodeAt(0) - 63;
+               result |= (b & 0x1f) << shift;
+               shift += 5;
+               } while (b >= 0x20);
+            var dlng = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
+            lng += dlng;
+
+            points.push({latitude:( lat / 1E5),longitude:( lng / 1E5)})  
+
+            }
+            return points
+    }
+
+
+    getDriverLocations();
+
+
+</script>
